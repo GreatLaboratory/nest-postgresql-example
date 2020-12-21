@@ -1,7 +1,8 @@
-import { Entity, Column, PrimaryGeneratedColumn, BeforeInsert } from 'typeorm';
+import { PostEntity } from 'src/post/entity/post.entity';
+import { Entity, Column, PrimaryGeneratedColumn, BeforeInsert, OneToMany } from 'typeorm';
 
-@Entity()
-export class User {
+@Entity({ name: 'user' })
+export class UserEntity {
   	@PrimaryGeneratedColumn()
   id: number;
 
@@ -19,6 +20,9 @@ export class User {
 
 	@Column({ default: true })
 	isActive: boolean;
+
+	@OneToMany(type => PostEntity, post => post.user)
+	posts: PostEntity[]
 
 	@BeforeInsert()
 	emailToLowerCase () {

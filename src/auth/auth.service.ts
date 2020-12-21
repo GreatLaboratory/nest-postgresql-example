@@ -1,13 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, forwardRef } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { User } from 'src/user/entity/user.entity';
+import { UserEntity } from 'src/user/entity/user.entity';
 import * as bcrypt from 'bcrypt';
+import { UserService } from 'src/user/user.service';
+import { Inject } from '@nestjs/common/decorators';
 
 @Injectable()
 export class AuthService {
-    constructor (private readonly jwtService: JwtService){}
+    constructor (
+        @Inject(forwardRef(() => UserService))
+        private readonly userService: UserService,
+        private readonly jwtService: JwtService,
+    ){}
 
-    generateJWT (user: User): Promise<string> {
+    generateJWT (user: UserEntity): Promise<string> {
         return this.jwtService.signAsync({user});
     }
     
@@ -17,5 +23,15 @@ export class AuthService {
 
     comparePassword (newPassword: string, passwordHash: string): boolean{
         return bcrypt.compareSync(newPassword, passwordHash);
+    }
+
+    async validateUser (email: string, password: string): Promise<UserEntity>{
+        try {
+            const findUser: UserEntity = await this.userService.findUserByEmail(email);
+            if (!this.comparePassword(password, findUser.password)) return null;
+            return findUser;
+        } catch (err) {
+            console.log(err);
+        }
     }
 }

@@ -1,5 +1,6 @@
 import { PostEntity } from 'src/post/entity/post.entity';
-import { Entity, Column, PrimaryGeneratedColumn, BeforeInsert, OneToMany } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, BeforeInsert, OneToMany, JoinColumn, OneToOne } from 'typeorm';
+import { AddressEntity } from './address.entity';
 
 @Entity({ name: 'user' })
 export class UserEntity {
@@ -21,8 +22,12 @@ export class UserEntity {
 	@Column({ default: true })
 	isActive: boolean;
 
-	@OneToMany(type => PostEntity, post => post.user)
+	@OneToMany(() => PostEntity, (post: PostEntity) => post.user)
 	posts: PostEntity[]
+
+	@OneToOne(() => AddressEntity)
+  	@JoinColumn({ name: 'addressId' })
+  	public address: AddressEntity;
 
 	@BeforeInsert()
 	emailToLowerCase () {

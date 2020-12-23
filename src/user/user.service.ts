@@ -5,6 +5,7 @@ import { Connection, Repository, UpdateResult } from 'typeorm';
 import { CreateUserDto } from './dto/user.create-dto';
 import { LoginUserDto } from './dto/user.login-dto';
 import { UpdateUserDto } from './dto/user.update-dto';
+import { AddressEntity } from './entity/address.entity';
 import { UserEntity } from './entity/user.entity';
 
 @Injectable()
@@ -12,16 +13,20 @@ export class UserService {
     constructor (
         @InjectRepository(UserEntity)
         private userRepository: Repository<UserEntity>,
+        @InjectRepository(AddressEntity)
+        private addressRepository: Repository<AddressEntity>,
         private authService: AuthService,
         private connection: Connection, // transaction을 위해 필요
     ){}
     
     // POST -> 특정 사용자 생성하기
     async createUser (user: CreateUserDto): Promise<UserEntity> {
-        const findUser: UserEntity = await this.userRepository.findOne({ email: user.email });
-        if (findUser) throw new ConflictException(`${user.email} is already created user. Create another user.`);
-        const hashPassword: string = await this.authService.hashPassword(user.password);
-        return this.userRepository.save({...user, password: hashPassword});
+        const { email, password, name, age, country, city, street, zipCode } = user;
+        const findUser: UserEntity = await this.userRepository.findOne({ email });
+        if (findUser) throw new ConflictException(`${email} is already created user. Create another user.`);
+        const hashPassword: string = await this.authService.hashPassword(password);
+        const saveAddress: AddressEntity = await this.addressRepository.save({ country, city, street, zipCode });
+        return this.userRepository.save({ email, name, age, password: hashPassword, address: saveAddress });
     }
 
     // POST -> 사용자 로그인 하기
@@ -49,19 +54,19 @@ export class UserService {
 
     // GET -> 전체 사용자 정보 조회하기
     async findAll (): Promise<UserEntity[]>{
-        return await this.userRepository.find();
+        return await this.userRepository.find({ relations: ['address'] });
     }
 
     // GET -> 특정 아이디로 사용자 정보 조회하기
     async findUserById (id: number): Promise<UserEntity>{
-        const selectedUser: UserEntity = await this.userRepository.findOne(id);
+        const selectedUser: UserEntity = await this.userRepository.findOne({ id }, { relations: ['address'] });
         if (!selectedUser) throw new NotFoundException(`there is no user with ID ${id}`);
         return selectedUser;
     }
 
     // GET -> 특정 키워드로 사용자의 정보 조회하기
     async findUserByEmail (email: string): Promise<UserEntity>{
-        const selectedUser: UserEntity = await this.userRepository.findOne({ email });
+        const selectedUser: UserEntity = await this.userRepository.findOne({ email }, { relations: ['address'] });
         if (!selectedUser) throw new NotFoundException(`there is no user with email->(${email})`);
         return selectedUser;
     }
@@ -73,7 +78,10 @@ export class UserService {
 
     // DELETE -> 특정 아이디로 사용자 정보 삭제하기
     async removeUserById (userId: number): Promise<void>{
-        await this.findUserById(userId);
+        const user: UserEntity = await this.findUserById(userId);
         await this.userRepository.delete(userId);
+        
+        // user테이블에 외래키로 있는 addressId가 먼저 지워져야지만 address테이블의 해당 로우가 정상삭제된다.
+        this.addressRepository.delete(user.address.id); 
     }
 }

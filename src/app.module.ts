@@ -3,6 +3,9 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
+import { PostModule } from './post/post.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 @Module({
     imports: [
@@ -20,8 +23,13 @@ import { AuthModule } from './auth/auth.module';
             synchronize: true,
             entities: ['dist/**/*.entity{.ts,.js}'],
         }),
+        ServeStaticModule.forRoot({
+            rootPath: join(__dirname, '..', 'uploads'),
+            serveRoot: '/static'
+        }),
         UserModule,
         AuthModule,
+        PostModule,
     ],
 })
 export class AppModule {}
